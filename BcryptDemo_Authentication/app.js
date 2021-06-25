@@ -42,7 +42,7 @@ app.use(express.urlencoded({
 
 //user created middleware (protect routes)
 const requireLogin = (req, res, next) => {
-    if(!req.session.user_id) {
+    if (!req.session.user_id) {
         return res.redirect('/login');
     }
     next();
@@ -64,16 +64,14 @@ app.post('/register', async (req, res) => {
         username,
         password
     } = req.body.form;
-    //here the two parameter are string password and number of rounds
-    const hash = await bcrypt.hash(password, 12);
     //Creating new user and saving in database
     const user = new User({
         username: username,
-        password: hash
+        password: password
     });
     await user.save();
     //successfully registered you are logged in
-    req.session.user_id = user._id; 
+    req.session.user_id = user._id;
     res.redirect('/');
 });
 
@@ -84,17 +82,18 @@ app.get('/login', async (req, res) => {
 
 app.post('/login', async (req, res) => {
     //fetch username and password from req body
-   const {username, password} = req.body.form;
-   //identify the user by his username
-   const user = await User.findOne({username: username});
-    //bcrypt the password and check for match from fetched user
-    const validPassword = await bcrypt.compare(password, user.password);
-    if(validPassword) {
-        //Now once we are successfully logged in we can store user_id in session cookie
-        req.session.user_id = user._id; 
+    const {
+        username,
+        password
+    } = req.body.form;
+    //identify the user and compare in model method if they match return the user
+    const foundUser = await User.findAndValidate(username, password);
+    //if user was found succesfully we create session cookie with user_id stored and redirect
+    if (foundUser) {
+        req.session.user_id = foundUser._id;
         res.redirect('/secret');
-    }else{
-        res.redirect('/login');
+    } else {
+        res.redirect('/login')
     }
 });
 
